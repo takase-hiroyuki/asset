@@ -5,8 +5,10 @@
     <title>Supabase テスト</title>
     <!-- SupabaseのJavaScriptクライアントをCDNから読み込む -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; margin: 40px; }
+    </style>
 </head>
-body { font-family: sans-serif; margin: 40px; }
 <body>
     <h1>Supabase テストアプリ</h1>
 
@@ -19,7 +21,7 @@ body { font-family: sans-serif; margin: 40px; }
     <ul id="messageList"></ul>
 
     <script>
-        // Supabaseの接続情報（Vercelの環境変数またはSupabaseダッシュボードから取得）
+        // Supabaseの接続情報
         const SUPABASE_URL = 'あなたのSupabaseのURL';
         const SUPABASE_ANON_KEY = 'あなたのSupabaseのAnon Key';
 
