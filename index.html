@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Supabase テスト</title>
+    <!-- SupabaseのJavaScriptクライアントをCDNから読み込む -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: sans-serif; margin: 40px; }
@@ -23,16 +24,16 @@
         // Supabaseの接続情報
         const SUPABASE_URL = 'https://dtgfdtsiggljqczvqcgy.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_8NKvxlnYvvD1ImNdYyj6Bg_DofuOnn1';
-        
-        // クライアントの初期化
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // クライアントの初期化（変数名を client に変更して重複を回避）
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // データの追加 (Insert)
         async function addMessage() {
             const content = document.getElementById('messageInput').value;
             if (!content) return;
 
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('messages')
                 .insert([{ content: content }]);
 
@@ -47,7 +48,7 @@
 
         // データの取得 (Select)
         async function fetchMessages() {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('messages')
                 .select('*')
                 .order('created_at', { ascending: false });
