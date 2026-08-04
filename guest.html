@@ -1,1 +1,68 @@
-guest
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ゲスト画面（リアルタイム閲覧）</title>
+    <!-- SupabaseのJavaScriptクライアントをCDNから読み込む -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; margin: 40px; }
+        #messageList { font-size: 1.2em; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <h1>ゲスト画面（リアルタイム）</h1>
+    <p>新しいメッセージが投稿されると、自動でここに表示されます。</p>
+
+    <h2>受信メッセージ一覧</h2>
+    <ul id="messageList"></ul>
+
+    <script>
+        // Supabaseの接続情報
+        const SUPABASE_URL = 'https://dtgfdtsiggljqczvqcgy.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_8NKvxlnYvvD1ImNdYyj6Bg_DofuOnn1';
+
+        // クライアントの初期化
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // データの取得と表示 (Select)
+        async function fetchMessages() {
+            const { data, error } = await supabaseClient
+                .from('messages')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            const list = document.getElementById('messageList');
+            list.innerHTML = '';
+
+            if (error) {
+                console.error('エラー:', error);
+                return;
+            }
+
+            data.forEach(msg => {
+                const li = document.createElement('li');
+                li.textContent = `${msg.content} （${new Date(msg.created_at).toLocaleString()}）`;
+                list.appendChild(li);
+            });
+        }
+
+        // --- リアルタイム購読の設定 ---
+        supabaseClient
+            .channel('public:messages')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'messages' },
+                (payload) => {
+                    console.log('変更を検知しました！', payload);
+                    // データベースに変動があったら自動で再取得して更新
+                    fetchMessages();
+                }
+            )
+            .subscribe();
+
+        // ページ読み込み時の初期表示
+        fetchMessages();
+    </script>
+</body>
+</html>
