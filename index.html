@@ -1,1 +1,73 @@
-index
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Supabase テスト</title>
+    <!-- SupabaseのJavaScriptクライアントをCDNから読み込む -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+body { font-family: sans-serif; margin: 40px; }
+<body>
+    <h1>Supabase テストアプリ</h1>
+
+    <h2>データを追加 (Insert)</h2>
+    <input type="text" id="messageInput" placeholder="メッセージを入力">
+    <button onclick="addMessage()">送信</button>
+
+    <h2>データ一覧 (Select)</h2>
+    <button onclick="fetchMessages()">データを再読み込み</button>
+    <ul id="messageList"></ul>
+
+    <script>
+        // Supabaseの接続情報（Vercelの環境変数またはSupabaseダッシュボードから取得）
+        const SUPABASE_URL = 'あなたのSupabaseのURL';
+        const SUPABASE_ANON_KEY = 'あなたのSupabaseのAnon Key';
+
+        // クライアントの初期化
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // データの追加 (Insert)
+        async function addMessage() {
+            const content = document.getElementById('messageInput').value;
+            if (!content) return;
+
+            const { data, error } = await supabase
+                .from('messages')
+                .insert([{ content: content }]);
+
+            if (error) {
+                alert('エラー: ' + error.message);
+            } else {
+                alert('追加成功！');
+                document.getElementById('messageInput').value = '';
+                fetchMessages();
+            }
+        }
+
+        // データの取得 (Select)
+        async function fetchMessages() {
+            const { data, error } = await supabase
+                .from('messages')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            const list = document.getElementById('messageList');
+            list.innerHTML = '';
+
+            if (error) {
+                console.error('エラー:', error);
+                return;
+            }
+
+            data.forEach(msg => {
+                const li = document.createElement('li');
+                li.textContent = `${msg.content} （${new Date(msg.created_at).toLocaleString()}）`;
+                list.appendChild(li);
+            });
+        }
+
+        // ページ読み込み時にデータを取得
+        fetchMessages();
+    </script>
+</body>
+</html>
