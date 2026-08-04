@@ -47,20 +47,24 @@
             });
         }
 
-        // --- リアルタイム購読の設定 ---
-        supabaseClient
-            .channel('public:messages')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'messages' },
-                (payload) => {
-                    console.log('変更を検知しました！', payload);
-                    // データベースに変動があったら自動で再取得して更新
-                    fetchMessages();
-                }
-            )
-            .subscribe();
-
+// --- リアルタイム購読の設定（ステータス確認付き） ---
+const channel = supabaseClient
+    .channel('public:messages')
+    .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages' },
+        (payload) => {
+            console.log('変更を検知しました！', payload);
+            fetchMessages();
+        }
+    )
+    .subscribe((status, err) => {
+        console.log('Realtime Status:', status);
+        if (err) {
+            console.error('Realtime Error:', err);
+        }
+    });
+        
         // ページ読み込み時の初期表示
         fetchMessages();
     </script>
