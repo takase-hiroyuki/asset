@@ -43,7 +43,7 @@ async function fetchAndDisplayItems() {
   });
 }
 
-// 2. 現在の手番を取得して画面に表示する関数
+// 2. 現在の手番を取得して画面に表示する関数（★ここでボタンの有効・無効を判定します）
 async function fetchAndDisplayTurn() {
   const { data, error } = await supabase
     .from('game_state')
@@ -57,7 +57,20 @@ async function fetchAndDisplayTurn() {
     return;
   }
 
-  document.getElementById('currentTurnDisplay').textContent = `現在の手番: ${data.current_turn}`;
+  const currentTurn = data.current_turn;
+  document.getElementById('currentTurnDisplay').textContent = `現在の手番: ${currentTurn}`;
+
+  // --- 追加：自分の手番かどうかのチェック ---
+  const selectedUser = document.getElementById('userSelect').value;
+  const nextTurnBtn = document.getElementById('nextTurnBtn');
+
+  if (currentTurn === selectedUser) {
+    // 自分の手番ならボタンを押せるようにする
+    nextTurnBtn.disabled = false;
+  } else {
+    // 自分の手番でなければボタンを押せないようにする（非アクティブ化）
+    nextTurnBtn.disabled = true;
+  }
 }
 
 // ==========================================
@@ -65,13 +78,15 @@ async function fetchAndDisplayTurn() {
 // ==========================================
 
 // セレクトボックスの選択が切り替わったとき
-document.getElementById('userSelect').addEventListener('change', fetchAndDisplayItems);
+document.getElementById('userSelect').addEventListener('change', () => {
+  fetchAndDisplayItems(); // アイテムと所持金を更新
+  fetchAndDisplayTurn();  // ★手番のチェック（ボタンの有効・無効）もやり直す
+});
 
-// 手番を次の人に回すボタンの処理（ミス防止のためエラー処理を強化）
+// 手番を次の人に回すボタンの処理
 document.getElementById('nextTurnBtn').addEventListener('click', async () => {
   console.log('--- 手番変更処理スタート ---');
   
-  // まず現在の手番を取得
   const { data, error } = await supabase
     .from('game_state')
     .select('current_turn')
@@ -92,7 +107,6 @@ document.getElementById('nextTurnBtn').addEventListener('click', async () => {
 
   console.log(`${current} から ${nextTurn} へ手番を更新します...`);
 
-  // データベースを更新
   const { error: updateError } = await supabase
     .from('game_state')
     .update({ current_turn: nextTurn })
