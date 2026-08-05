@@ -97,19 +97,94 @@ async function checkTradeOffer() {
 
   if (offer && offer.to === selectedUser) {
     tradeOfferArea.style.display = 'block';
-    // ★変更：メッセージに値段（offer.price）を追加
     tradeOfferArea.innerHTML = `
       <p><strong>${offer.from}</strong> さんから <strong>${offer.item}</strong> を <strong>${offer.price}</strong> 円で渡したいと提案が来ています。</p>
       <button id="acceptTradeBtn">承諾する (Yes)</button>
       <button id="rejectTradeBtn">断る (No)</button>
     `;
 
-    document.getElementById('acceptTradeBtn').addEventListener('click', () => {
-      alert('承諾しました！※アイテムと所持金移動の処理はこれから作ります');
+    // ==========================================
+    // ★追加：承諾したときの処理（アイテムとお金の移動）
+    // ==========================================
+    document.getElementById('acceptTradeBtn').addEventListener('click', async () => {
+      // 一時的にボタンを押せなくする
+      document.getElementById('acceptTradeBtn').disabled = true;
+      document.getElementById('rejectTradeBtn').disabled = true;
+
+      try {
+        // 1. 渡し手（from）の現在のデータを取得
+        const { data: fromUser } = await supabase
+          .from('users')
+          .select('items, money')
+          .eq('id', offer.from)
+          .single();
+
+        // 2. 受け手（to = 自分）の現在のデータを取得
+        const { data: toUser } = await supabase
+          .from('users')
+          .select('items, money')
+          .eq('id', offer.to)
+          .single();
+
+        // --- 渡し手のデータを計算 ---
+        // 渡したアイテムをリストから1つだけ削除する
+        const fromItems = [...(fromUser.items || [])];
+        const itemIndex = fromItems.indexOf(offer.item);
+        if (itemIndex > -1) {
+          fromItems.splice(itemIndex, 1);
+        }
+        // お金をもらう
+        const fromMoney = (fromUser.money || 0) + offer.price;
+
+        // --- 受け手のデータを計算 ---
+        // もらったアイテムをリストに追加する
+        const toItems = [...(toUser.items || [])];
+        toItems.push(offer.item);
+        // お金を払う
+        const toMoney = (toUser.money || 0) - offer.price;
+
+        // 3. データベースを更新する（渡し手）
+        await supabase
+          .from('users')
+          .update({ items: fromItems, money: fromMoney })
+          .eq('id', offer.from);
+
+        // 4. データベースを更新する（受け手）
+        await supabase
+          .from('users')
+          .update({ items: toItems, money: toMoney })
+          .eq('id', offer.to);
+
+        // 5. 提案をリセットする
+        await supabase
+          .from('game_state')
+          .update({ trade_offer: null })
+          .eq('id', 'main');
+
+        alert('取引が成立しました！');
+      } catch (err) {
+        console.error('取引エラー:', err);
+        alert('取引の処理中にエラーが発生しました。');
+      }
     });
 
-    document.getElementById('rejectTradeBtn').addEventListener('click', () => {
-      alert('断りました！※提案を取り消す処理はこれから作ります');
+    // ==========================================
+    // ★追加：断ったときの処理（提案の取り消し）
+    // ==========================================
+    document.getElementById('rejectTradeBtn').addEventListener('click', async () => {
+      document.getElementById('acceptTradeBtn').disabled = true;
+      document.getElementById('rejectTradeBtn').disabled = true;
+
+      const { error: resetError } = await supabase
+        .from('game_state')
+        .update({ trade_offer: null })
+        .eq('id', 'main');
+
+      if (resetError) {
+        alert('拒否の処理に失敗しました。');
+      } else {
+        alert('提案を断りました。');
+      }
     });
 
   } else {
@@ -149,7 +224,6 @@ document.getElementById('tradeSubmitBtn').addEventListener('click', async () => 
   const fromUser = document.getElementById('userSelect').value;
   const itemToTrade = document.getElementById('tradeItemSelect').value;
   const toUser = document.getElementById('tradeTargetSelect').value;
-  // ★追加：入力された値段を取得（空欄の場合は0円にする）
   const priceToTrade = parseInt(document.getElementById('tradePriceInput').value) || 0;
 
   if (!itemToTrade) {
@@ -157,7 +231,6 @@ document.getElementById('tradeSubmitBtn').addEventListener('click', async () => 
     return;
   }
 
-  // ★変更：提案データに price を追加
   const offerData = {
     from: fromUser,
     to: toUser,
@@ -173,7 +246,6 @@ document.getElementById('tradeSubmitBtn').addEventListener('click', async () => 
   if (error) {
     alert('提案の送信に失敗しました。');
   } else {
-    // ★変更：アラートにも値段を追加
     alert(`${toUser} に ${itemToTrade} を ${priceToTrade} 円で渡す提案を送信しました！`);
     document.getElementById('tradeSubmitBtn').disabled = true;
   }
