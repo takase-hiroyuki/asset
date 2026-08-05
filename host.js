@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
 const SUPABASE_URL = 'https://dtgfdtsiggljqczvqcgy.supabase.co';
@@ -32,6 +31,17 @@ document.getElementById('distributeBtn').addEventListener('click', async () => {
     }
   }
 
+  // --- ここから追加：画面に結果を表示する処理 ---
+  const resultList = document.getElementById('resultList');
+  resultList.innerHTML = ''; // リストを一度空っぽにする
+
+  for (const player of players) {
+    const li = document.createElement('li');
+    // 配列をカンマ区切りの文字列にして表示（例: user1: item03, item09）
+    li.textContent = `${player}: ${userItems[player].join(', ')}`;
+    resultList.appendChild(li);
+  }
+  // --- ここまで追加 ---
+
   console.log('振り分け結果:', userItems);
-  alert('アイテムの配布が完了しました！');
 });
