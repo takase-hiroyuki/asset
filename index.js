@@ -1,5 +1,3 @@
-//index.js
-
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
 // Supabaseの設定
@@ -23,8 +21,9 @@ async function fetchAndDisplayItems() {
     .single();
 
   if (error) {
-    console.error('エラー:', error);
+    console.error('データの取得エラー:', error);
     myItemsList.innerHTML = '<li>データの取得に失敗しました</li>';
+    myMoneyDisplay.textContent = '所持金: 取得エラー';
     return;
   }
 
@@ -54,6 +53,7 @@ async function fetchAndDisplayTurn() {
 
   if (error) {
     console.error('手番の取得エラー:', error);
+    document.getElementById('currentTurnDisplay').textContent = '現在の手番: 取得エラー';
     return;
   }
 
@@ -67,15 +67,22 @@ async function fetchAndDisplayTurn() {
 // セレクトボックスの選択が切り替わったとき
 document.getElementById('userSelect').addEventListener('change', fetchAndDisplayItems);
 
-// 手番を次の人に回すボタンの処理
+// 手番を次の人に回すボタンの処理（ミス防止のためエラー処理を強化）
 document.getElementById('nextTurnBtn').addEventListener('click', async () => {
+  console.log('--- 手番変更処理スタート ---');
+  
+  // まず現在の手番を取得
   const { data, error } = await supabase
     .from('game_state')
     .select('current_turn')
     .eq('id', 'main')
     .single();
 
-  if (error) return;
+  if (error) {
+    console.error('現在の手番の確認に失敗しました:', error);
+    alert('手番の確認に失敗しました。');
+    return;
+  }
 
   const current = data.current_turn;
   let nextTurn = '';
@@ -83,10 +90,20 @@ document.getElementById('nextTurnBtn').addEventListener('click', async () => {
   else if (current === 'user2') nextTurn = 'user3';
   else nextTurn = 'user1';
 
-  await supabase
+  console.log(`${current} から ${nextTurn} へ手番を更新します...`);
+
+  // データベースを更新
+  const { error: updateError } = await supabase
     .from('game_state')
     .update({ current_turn: nextTurn })
     .eq('id', 'main');
+
+  if (updateError) {
+    console.error('手番の更新エラー:', updateError);
+    alert('手番の更新に失敗しました。コンソールを確認してください。');
+  } else {
+    console.log('手番の更新に成功しました！');
+  }
 });
 
 // ==========================================
@@ -100,6 +117,7 @@ supabase
     'postgres_changes',
     { event: '*', schema: 'public', table: 'users' },
     (payload) => {
+      console.log('ユーザーデータの変更を検知:', payload);
       fetchAndDisplayItems();
     }
   )
@@ -112,6 +130,7 @@ supabase
     'postgres_changes',
     { event: '*', schema: 'public', table: 'game_state' },
     (payload) => {
+      console.log('手番の変更を検知:', payload);
       fetchAndDisplayTurn();
     }
   )
@@ -122,5 +141,3 @@ supabase
 // ==========================================
 fetchAndDisplayItems();
 fetchAndDisplayTurn();
-
-// index.js
