@@ -4,19 +4,34 @@ const SUPABASE_URL = 'https://dtgfdtsiggljqczvqcgy.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_8NKvxlnYvvD1ImNdYyj6Bg_DofuOnn1';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// --- 追加：画面に結果を表示する関数 ---
-function displayResults(players, userItems) {
+// --- 変更：Supabaseから最新のデータを取得して画面に表示する関数 ---
+async function fetchAllAndDisplay() {
+  const players = ['user1', 'user2', 'user3'];
   const resultList = document.getElementById('resultList');
-  resultList.innerHTML = ''; // リストを一度空っぽにする
+  
+  resultList.innerHTML = '<li>読み込み中...</li>';
 
-  for (const player of players) {
-    const li = document.createElement('li');
-    // 配列をカンマ区切りの文字列にして表示（例: user1: item03, item09）
-    li.textContent = `${player}: ${userItems[player].join(', ')}`;
-    resultList.appendChild(li);
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, items')
+    .in('id', players); // user1, user2, user3 だけを取得
+
+  if (error) {
+    console.error('取得エラー:', error);
+    resultList.innerHTML = '<li>データの取得に失敗しました</li>';
+    return;
   }
 
-  console.log('振り分け結果:', userItems);
+  resultList.innerHTML = ''; // リストを一度空っぽにする
+
+  // 取得したデータを表示
+  data.forEach(user => {
+    const li = document.createElement('li');
+    // アイテムがある場合はカンマ区切り、ない場合は「アイテムなし」と表示
+    const itemsText = user.items && user.items.length > 0 ? user.items.join(', ') : 'アイテムなし';
+    li.textContent = `${user.id}: ${itemsText}`;
+    resultList.appendChild(li);
+  });
 }
 // ------------------------------------
 
@@ -46,7 +61,24 @@ document.getElementById('distributeBtn').addEventListener('click', async () => {
       return;
     }
   }
-
-  // --- 変更：関数を呼び出して画面を更新 ---
-  displayResults(players, userItems);
+  // ※ここで手動で画面を更新しなくても、下のリアルタイム検知が作動して画面が変わります
 });
+
+// ==========================================
+// 追加：リアルタイムでデータの変更を検知する設定
+// ==========================================
+supabase
+  .channel('public:users_host')
+  .on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'users' },
+    (payload) => {
+      console.log('Host画面でデータ変更を検知:', payload);
+      // データに変更があったら、最新状態を取得して表示し直す
+      fetchAllAndDisplay();
+    }
+  )
+  .subscribe();
+
+// 画面を最初に開いたときにも最新状態を表示する
+fetchAllAndDisplay();
