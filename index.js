@@ -1,83 +1,21 @@
+//index.js
+
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-// host.js と同じSupabaseの設定
+// Supabaseの設定
 const SUPABASE_URL = 'https://dtgfdtsiggljqczvqcgy.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_8NKvxlnYvvD1ImNdYyj6Bg_DofuOnn1';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// 選択されたユーザーのアイテムを取得して表示する関数
+// 1. 選択されたユーザーのアイテムと所持金を取得して表示する関数
 async function fetchAndDisplayItems() {
   const selectedUser = document.getElementById('userSelect').value;
   const myItemsList = document.getElementById('myItemsList');
+  const myMoneyDisplay = document.getElementById('myMoneyDisplay');
 
-  // 取得中のメッセージ
   myItemsList.innerHTML = '<li>読み込み中...</li>';
+  myMoneyDisplay.textContent = '所持金: 読み込み中...';
 
-  // Supabaseから該当ユーザーのデータを取得
-  const { data, error } = await supabase
-    .from('users')
-    .select('items')
-    .eq('id', selectedUser)
-    .single();
-
-  if (error) {
-    console.error('エラー:', error);
-    myItemsList.innerHTML = '<li>データの取得に失敗しました</li>';
-    return;
-  }
-
-  // リストを一度空っぽにする
-  myItemsList.innerHTML = '';
-
-  const items = data.items || [];
-
-  // アイテムが1つもない場合の表示
-  if (items.length === 0) {
-    myItemsList.innerHTML = '<li>アイテムを持っていません</li>';
-    return;
-  }
-
-  // アイテムを1つずつリスト(li)にして追加
-  items.forEach(item => {
-    const li = document.createElement('li');
-    li.textContent = item;
-    myItemsList.appendChild(li);
-  });
-}
-
-// セレクトボックスの選択が切り替わったときに実行する
-document.getElementById('userSelect').addEventListener('change', fetchAndDisplayItems);
-
-// 画面を最初に開いたときにも実行する（初期表示）
-fetchAndDisplayItems();
-
-// ==========================================
-// 追加：リアルタイムでデータの変更を検知する設定
-// ==========================================
-supabase
-  .channel('public:users')
-  .on(
-    'postgres_changes',
-    { event: '*', schema: 'public', table: 'users' },
-    (payload) => {
-      console.log('データ変更を検知:', payload);
-      // usersテーブルに変化があったら、アイテムを再取得して表示を更新
-      fetchAndDisplayItems();
-    }
-  )
-  .subscribe();
-
-// 選択されたユーザーのアイテムと所持金を取得して表示する関数
-async function fetchAndDisplayItems() {
-  const selectedUser = document.getElementById('userSelect').value;
-  const myItemsList = document.getElementById('myItemsList');
-  const myMoneyDisplay = document.getElementById('myMoneyDisplay'); // 追加
-
-  // 取得中のメッセージ
-  myItemsList.innerHTML = '<li>読み込み中...</li>';
-  myMoneyDisplay.textContent = '所持金: 読み込み中...'; // 追加
-
-  // Supabaseからアイテムと所持金を取得（money を追加）
   const { data, error } = await supabase
     .from('users')
     .select('items, money')
@@ -90,10 +28,7 @@ async function fetchAndDisplayItems() {
     return;
   }
 
-  // 所持金を表示（追加）
   myMoneyDisplay.textContent = `所持金: ${data.money}`;
-
-  // リストを一度空っぽにする
   myItemsList.innerHTML = '';
   const items = data.items || [];
 
@@ -108,24 +43,84 @@ async function fetchAndDisplayItems() {
     myItemsList.appendChild(li);
   });
 }
-  // 画面の文字を書き換える
+
+// 2. 現在の手番を取得して画面に表示する関数
+async function fetchAndDisplayTurn() {
+  const { data, error } = await supabase
+    .from('game_state')
+    .select('current_turn')
+    .eq('id', 'main')
+    .single();
+
+  if (error) {
+    console.error('手番の取得エラー:', error);
+    return;
+  }
+
   document.getElementById('currentTurnDisplay').textContent = `現在の手番: ${data.current_turn}`;
 }
 
-// 画面を最初に開いたときに実行する
-fetchAndDisplayTurn();
+// ==========================================
+// イベントリスナー（ボタンや操作の設定）
+// ==========================================
+
+// セレクトボックスの選択が切り替わったとき
+document.getElementById('userSelect').addEventListener('change', fetchAndDisplayItems);
+
+// 手番を次の人に回すボタンの処理
+document.getElementById('nextTurnBtn').addEventListener('click', async () => {
+  const { data, error } = await supabase
+    .from('game_state')
+    .select('current_turn')
+    .eq('id', 'main')
+    .single();
+
+  if (error) return;
+
+  const current = data.current_turn;
+  let nextTurn = '';
+  if (current === 'user1') nextTurn = 'user2';
+  else if (current === 'user2') nextTurn = 'user3';
+  else nextTurn = 'user1';
+
+  await supabase
+    .from('game_state')
+    .update({ current_turn: nextTurn })
+    .eq('id', 'main');
+});
 
 // ==========================================
-// 追加：リアルタイムで game_state（手番）の変更を検知する設定
+// リアルタイム通信の監視設定
 // ==========================================
+
+// usersテーブル（アイテムや所持金）の監視
+supabase
+  .channel('public:users')
+  .on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'users' },
+    (payload) => {
+      fetchAndDisplayItems();
+    }
+  )
+  .subscribe();
+
+// game_stateテーブル（手番）の監視
 supabase
   .channel('public:game_state_channel')
   .on(
     'postgres_changes',
     { event: '*', schema: 'public', table: 'game_state' },
     (payload) => {
-      console.log('手番のデータ変更を検知:', payload);
-      fetchAndDisplayTurn(); // ← ★この1行を追加！
+      fetchAndDisplayTurn();
     }
   )
   .subscribe();
+
+// ==========================================
+// 初期表示の実行
+// ==========================================
+fetchAndDisplayItems();
+fetchAndDisplayTurn();
+
+// index.js
