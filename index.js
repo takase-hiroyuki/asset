@@ -67,19 +67,47 @@ supabase
   )
   .subscribe();
 
-// 現在の手番を取得して画面に表示する関数
-async function fetchAndDisplayTurn() {
+// 選択されたユーザーのアイテムと所持金を取得して表示する関数
+async function fetchAndDisplayItems() {
+  const selectedUser = document.getElementById('userSelect').value;
+  const myItemsList = document.getElementById('myItemsList');
+  const myMoneyDisplay = document.getElementById('myMoneyDisplay'); // 追加
+
+  // 取得中のメッセージ
+  myItemsList.innerHTML = '<li>読み込み中...</li>';
+  myMoneyDisplay.textContent = '所持金: 読み込み中...'; // 追加
+
+  // Supabaseからアイテムと所持金を取得（money を追加）
   const { data, error } = await supabase
-    .from('game_state')
-    .select('current_turn')
-    .eq('id', 'main')
+    .from('users')
+    .select('items, money')
+    .eq('id', selectedUser)
     .single();
 
   if (error) {
-    console.error('手番の取得エラー:', error);
+    console.error('エラー:', error);
+    myItemsList.innerHTML = '<li>データの取得に失敗しました</li>';
     return;
   }
 
+  // 所持金を表示（追加）
+  myMoneyDisplay.textContent = `所持金: ${data.money}`;
+
+  // リストを一度空っぽにする
+  myItemsList.innerHTML = '';
+  const items = data.items || [];
+
+  if (items.length === 0) {
+    myItemsList.innerHTML = '<li>アイテムを持っていません</li>';
+    return;
+  }
+
+  items.forEach(item => {
+    const li = document.createElement('li');
+    li.textContent = item;
+    myItemsList.appendChild(li);
+  });
+}
   // 画面の文字を書き換える
   document.getElementById('currentTurnDisplay').textContent = `現在の手番: ${data.current_turn}`;
 }
