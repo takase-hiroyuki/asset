@@ -4,6 +4,22 @@ const SUPABASE_URL = 'https://dtgfdtsiggljqczvqcgy.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_8NKvxlnYvvD1ImNdYyj6Bg_DofuOnn1';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// --- 追加：画面に結果を表示する関数 ---
+function displayResults(players, userItems) {
+  const resultList = document.getElementById('resultList');
+  resultList.innerHTML = ''; // リストを一度空っぽにする
+
+  for (const player of players) {
+    const li = document.createElement('li');
+    // 配列をカンマ区切りの文字列にして表示（例: user1: item03, item09）
+    li.textContent = `${player}: ${userItems[player].join(', ')}`;
+    resultList.appendChild(li);
+  }
+
+  console.log('振り分け結果:', userItems);
+}
+// ------------------------------------
+
 document.getElementById('distributeBtn').addEventListener('click', async () => {
   const allItems = ['item01', 'item02', 'item03', 'item04', 'item05', 'item06', 'item07', 'item08', 'item09', 'item10'];
   const players = ['user1', 'user2', 'user3'];
@@ -31,17 +47,6 @@ document.getElementById('distributeBtn').addEventListener('click', async () => {
     }
   }
 
-  // --- ここから追加：画面に結果を表示する処理 ---
-  const resultList = document.getElementById('resultList');
-  resultList.innerHTML = ''; // リストを一度空っぽにする
-
-  for (const player of players) {
-    const li = document.createElement('li');
-    // 配列をカンマ区切りの文字列にして表示（例: user1: item03, item09）
-    li.textContent = `${player}: ${userItems[player].join(', ')}`;
-    resultList.appendChild(li);
-  }
-  // --- ここまで追加 ---
-
-  console.log('振り分け結果:', userItems);
+  // --- 変更：関数を呼び出して画面を更新 ---
+  displayResults(players, userItems);
 });
