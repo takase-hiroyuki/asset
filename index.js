@@ -10,9 +10,28 @@ async function fetchAndDisplayItems() {
   const selectedUser = document.getElementById('userSelect').value;
   const myItemsList = document.getElementById('myItemsList');
   const myMoneyDisplay = document.getElementById('myMoneyDisplay');
+  
+  // ★追加：取引メニューのプルダウン
+  const tradeItemSelect = document.getElementById('tradeItemSelect');
+  const tradeTargetSelect = document.getElementById('tradeTargetSelect');
 
   myItemsList.innerHTML = '<li>読み込み中...</li>';
   myMoneyDisplay.textContent = '所持金: 読み込み中...';
+  
+  // ★追加：プルダウンの初期化
+  tradeItemSelect.innerHTML = '<option value="">-- 選択してください --</option>';
+  tradeTargetSelect.innerHTML = ''; 
+
+  // ★追加：自分以外のユーザーを「渡す相手」プルダウンにセット
+  const allUsers = ['user1', 'user2', 'user3'];
+  allUsers.forEach(u => {
+    if (u !== selectedUser) {
+      const option = document.createElement('option');
+      option.value = u;
+      option.textContent = u;
+      tradeTargetSelect.appendChild(option);
+    }
+  });
 
   const { data, error } = await supabase
     .from('users')
@@ -37,13 +56,20 @@ async function fetchAndDisplayItems() {
   }
 
   items.forEach(item => {
+    // 画面のリストに追加
     const li = document.createElement('li');
     li.textContent = item;
     myItemsList.appendChild(li);
+
+    // ★追加：渡すアイテムのプルダウンにも追加
+    const option = document.createElement('option');
+    option.value = item;
+    option.textContent = item;
+    tradeItemSelect.appendChild(option);
   });
 }
 
-// 2. 現在の手番を取得して画面に表示する関数（★ここでボタンの有効・無効を判定します）
+// 2. 現在の手番を取得して画面に表示する関数（ボタンの有効・無効を判定）
 async function fetchAndDisplayTurn() {
   const { data, error } = await supabase
     .from('game_state')
@@ -60,16 +86,16 @@ async function fetchAndDisplayTurn() {
   const currentTurn = data.current_turn;
   document.getElementById('currentTurnDisplay').textContent = `現在の手番: ${currentTurn}`;
 
-  // --- 追加：自分の手番かどうかのチェック ---
   const selectedUser = document.getElementById('userSelect').value;
   const nextTurnBtn = document.getElementById('nextTurnBtn');
+  const tradeSubmitBtn = document.getElementById('tradeSubmitBtn'); // ★追加：提案ボタン
 
   if (currentTurn === selectedUser) {
-    // 自分の手番ならボタンを押せるようにする
     nextTurnBtn.disabled = false;
+    tradeSubmitBtn.disabled = false; // ★自分の手番なら提案ボタンを押せる
   } else {
-    // 自分の手番でなければボタンを押せないようにする（非アクティブ化）
     nextTurnBtn.disabled = true;
+    tradeSubmitBtn.disabled = true;  // ★自分の手番でなければ提案ボタンを押せない
   }
 }
 
@@ -79,8 +105,8 @@ async function fetchAndDisplayTurn() {
 
 // セレクトボックスの選択が切り替わったとき
 document.getElementById('userSelect').addEventListener('change', () => {
-  fetchAndDisplayItems(); // アイテムと所持金を更新
-  fetchAndDisplayTurn();  // ★手番のチェック（ボタンの有効・無効）もやり直す
+  fetchAndDisplayItems(); 
+  fetchAndDisplayTurn();  
 });
 
 // 手番を次の人に回すボタンの処理
@@ -114,7 +140,7 @@ document.getElementById('nextTurnBtn').addEventListener('click', async () => {
 
   if (updateError) {
     console.error('手番の更新エラー:', updateError);
-    alert('手番の更新に失敗しました。コンソールを確認してください。');
+    alert('手番の更新に失敗しました。');
   } else {
     console.log('手番の更新に成功しました！');
   }
@@ -124,27 +150,25 @@ document.getElementById('nextTurnBtn').addEventListener('click', async () => {
 // リアルタイム通信の監視設定
 // ==========================================
 
-// usersテーブル（アイテムや所持金）の監視
+// usersテーブルの監視
 supabase
   .channel('public:users')
   .on(
     'postgres_changes',
     { event: '*', schema: 'public', table: 'users' },
     (payload) => {
-      console.log('ユーザーデータの変更を検知:', payload);
       fetchAndDisplayItems();
     }
   )
   .subscribe();
 
-// game_stateテーブル（手番）の監視
+// game_stateテーブルの監視
 supabase
   .channel('public:game_state_channel')
   .on(
     'postgres_changes',
     { event: '*', schema: 'public', table: 'game_state' },
     (payload) => {
-      console.log('手番の変更を検知:', payload);
       fetchAndDisplayTurn();
     }
   )
