@@ -1,5 +1,7 @@
 # asset
 asset
+ゲームカード
+https://mygan-six.vercel.app/cards/small.html
 
 https://asset-bay-six.vercel.app/
 
