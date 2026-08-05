@@ -63,7 +63,7 @@ async function fetchAndDisplayItems() {
   });
 }
 
-// 2. 現在の手番を取得して画面に表示する関数（ボタンの有効・無効を判定）
+// 2. 現在の手番を取得して画面に表示する関数
 async function fetchAndDisplayTurn() {
   const { data, error } = await supabase
     .from('game_state')
@@ -93,17 +93,61 @@ async function fetchAndDisplayTurn() {
   }
 }
 
+// ★追加3. 取引の提案が来ているかチェックして画面に表示する関数
+async function checkTradeOffer() {
+  const selectedUser = document.getElementById('userSelect').value;
+  const tradeOfferArea = document.getElementById('tradeOfferArea');
+
+  // game_stateから現在のtrade_offerを取得
+  const { data, error } = await supabase
+    .from('game_state')
+    .select('trade_offer')
+    .eq('id', 'main')
+    .single();
+
+  if (error) {
+    console.error('取引データの取得エラー:', error);
+    return;
+  }
+
+  const offer = data.trade_offer;
+
+  // 提案が存在し、かつ「自分宛て」の場合のみ表示する
+  if (offer && offer.to === selectedUser) {
+    tradeOfferArea.style.display = 'block';
+    tradeOfferArea.innerHTML = `
+      <p><strong>${offer.from}</strong> さんから <strong>${offer.item}</strong> を渡したいと提案が来ています。</p>
+      <button id="acceptTradeBtn">承諾する (Yes)</button>
+      <button id="rejectTradeBtn">断る (No)</button>
+    `;
+
+    // 承諾ボタンの処理（今はアラートが出るだけ）
+    document.getElementById('acceptTradeBtn').addEventListener('click', () => {
+      alert('承諾しました！※アイテム移動の処理はこれから作ります');
+    });
+
+    // 断るボタンの処理（今はアラートが出るだけ）
+    document.getElementById('rejectTradeBtn').addEventListener('click', () => {
+      alert('断りました！※提案を取り消す処理はこれから作ります');
+    });
+
+  } else {
+    // 提案がない、または自分宛てでなければ非表示にする
+    tradeOfferArea.style.display = 'none';
+    tradeOfferArea.innerHTML = '';
+  }
+}
+
 // ==========================================
 // イベントリスナー（ボタンや操作の設定）
 // ==========================================
 
-// セレクトボックスの選択が切り替わったとき
 document.getElementById('userSelect').addEventListener('change', () => {
   fetchAndDisplayItems(); 
-  fetchAndDisplayTurn();  
+  fetchAndDisplayTurn();
+  checkTradeOffer(); // ★ユーザーを切り替えた時にも提案をチェックする
 });
 
-// 手番を次の人に回すボタンの処理
 document.getElementById('nextTurnBtn').addEventListener('click', async () => {
   const { data, error } = await supabase
     .from('game_state')
@@ -125,26 +169,22 @@ document.getElementById('nextTurnBtn').addEventListener('click', async () => {
     .eq('id', 'main');
 });
 
-// ★追加：相手に提案するボタンの処理
 document.getElementById('tradeSubmitBtn').addEventListener('click', async () => {
   const fromUser = document.getElementById('userSelect').value;
   const itemToTrade = document.getElementById('tradeItemSelect').value;
   const toUser = document.getElementById('tradeTargetSelect').value;
 
-  // アイテムが選ばれていない場合はストップ
   if (!itemToTrade) {
     alert('渡すアイテムを選んでください。');
     return;
   }
 
-  // データベースに保存するためのデータを作成
   const offerData = {
     from: fromUser,
     to: toUser,
     item: itemToTrade
   };
 
-  // Supabaseの trade_offer 列を更新
   const { error } = await supabase
     .from('game_state')
     .update({ trade_offer: offerData })
@@ -155,7 +195,6 @@ document.getElementById('tradeSubmitBtn').addEventListener('click', async () => 
     alert('提案の送信に失敗しました。');
   } else {
     alert(`${toUser} に ${itemToTrade} を渡す提案を送信しました！`);
-    // 提案後、間違えて連続で押さないようにボタンを一旦無効化する
     document.getElementById('tradeSubmitBtn').disabled = true;
   }
 });
@@ -164,7 +203,6 @@ document.getElementById('tradeSubmitBtn').addEventListener('click', async () => 
 // リアルタイム通信の監視設定
 // ==========================================
 
-// usersテーブルの監視
 supabase
   .channel('public:users')
   .on(
@@ -176,7 +214,6 @@ supabase
   )
   .subscribe();
 
-// game_stateテーブルの監視
 supabase
   .channel('public:game_state_channel')
   .on(
@@ -184,6 +221,7 @@ supabase
     { event: '*', schema: 'public', table: 'game_state' },
     (payload) => {
       fetchAndDisplayTurn();
+      checkTradeOffer(); // ★誰かが提案を送信（game_stateが更新）されたら、即座にチェックする
     }
   )
   .subscribe();
@@ -193,3 +231,4 @@ supabase
 // ==========================================
 fetchAndDisplayItems();
 fetchAndDisplayTurn();
+checkTradeOffer(); // ★画面を開いた時にも提案をチェックする
