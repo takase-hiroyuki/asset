@@ -66,3 +66,18 @@ supabase
     }
   )
   .subscribe();
+
+// ==========================================
+// 追加：リアルタイムで game_state（手番）の変更を検知する設定
+// ==========================================
+supabase
+  .channel('public:game_state_channel')
+  .on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'game_state' },
+    (payload) => {
+      console.log('手番のデータ変更を検知:', payload);
+      // ※ここに画面の表示を更新する処理を追加します（次のステップで作ります！）
+    }
+  )
+  .subscribe();
