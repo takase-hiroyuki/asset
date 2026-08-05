@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -5,23 +6,30 @@
   <title>プレイヤー画面</title>
 </head>
 <body>
-  <h2>プレイヤー 画面</h2>  
+  <h1>プレイヤー画面</h1>
+
   <!-- ユーザー選択 -->
-  <label for="userSelect">ユーザーを選択:</label>
-  <select id="userSelect">
-    <option value="user1">user1</option>
-    <option value="user2">user2</option>
-    <option value="user3">user3</option>
-  </select>
+  <p>ユーザーを選択: 
+    <select id="userSelect">
+      <option value="user1">user1</option>
+      <option value="user2">user2</option>
+      <option value="user3">user3</option>
+    </select>
+  </p>
+
+  <!-- 手番の表示とボタン -->
   <h3 id="currentTurnDisplay">現在の手番: 読み込み中...</h3>
-  <p id="myMoneyDisplay">所持金: 読み込み中...</p>
-  <!-- 選んだユーザーのアイテムを表示するリスト -->
+  <button id="nextTurnBtn">手番を終わる（次の人へ）</button>
+
+  <!-- 所持金とアイテムの表示 -->
   <h2>所持アイテム</h2>
+  <p id="myMoneyDisplay">所持金: 読み込み中...</p>
   <ul id="myItemsList">
-    <li>（アイテムを読み込み中...）</li>
+    <li>読み込み中...</li>
   </ul>
 
-  <!-- 外部のJSファイルを読み込む -->
+  <!-- JavaScriptの読み込み（ご自身の環境に合わせてパスは適宜調整してください） -->
   <script type="module" src="index.js"></script>
 </body>
 </html>
+<!-- index.html -->
