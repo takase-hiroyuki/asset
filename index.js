@@ -10,19 +10,15 @@ async function fetchAndDisplayItems() {
   const selectedUser = document.getElementById('userSelect').value;
   const myItemsList = document.getElementById('myItemsList');
   const myMoneyDisplay = document.getElementById('myMoneyDisplay');
-  
-  // ★追加：取引メニューのプルダウン
   const tradeItemSelect = document.getElementById('tradeItemSelect');
   const tradeTargetSelect = document.getElementById('tradeTargetSelect');
 
   myItemsList.innerHTML = '<li>読み込み中...</li>';
   myMoneyDisplay.textContent = '所持金: 読み込み中...';
   
-  // ★追加：プルダウンの初期化
   tradeItemSelect.innerHTML = '<option value="">-- 選択してください --</option>';
   tradeTargetSelect.innerHTML = ''; 
 
-  // ★追加：自分以外のユーザーを「渡す相手」プルダウンにセット
   const allUsers = ['user1', 'user2', 'user3'];
   allUsers.forEach(u => {
     if (u !== selectedUser) {
@@ -56,12 +52,10 @@ async function fetchAndDisplayItems() {
   }
 
   items.forEach(item => {
-    // 画面のリストに追加
     const li = document.createElement('li');
     li.textContent = item;
     myItemsList.appendChild(li);
 
-    // ★追加：渡すアイテムのプルダウンにも追加
     const option = document.createElement('option');
     option.value = item;
     option.textContent = item;
@@ -88,14 +82,14 @@ async function fetchAndDisplayTurn() {
 
   const selectedUser = document.getElementById('userSelect').value;
   const nextTurnBtn = document.getElementById('nextTurnBtn');
-  const tradeSubmitBtn = document.getElementById('tradeSubmitBtn'); // ★追加：提案ボタン
+  const tradeSubmitBtn = document.getElementById('tradeSubmitBtn'); 
 
   if (currentTurn === selectedUser) {
     nextTurnBtn.disabled = false;
-    tradeSubmitBtn.disabled = false; // ★自分の手番なら提案ボタンを押せる
+    tradeSubmitBtn.disabled = false; 
   } else {
     nextTurnBtn.disabled = true;
-    tradeSubmitBtn.disabled = true;  // ★自分の手番でなければ提案ボタンを押せない
+    tradeSubmitBtn.disabled = true;  
   }
 }
 
@@ -111,19 +105,13 @@ document.getElementById('userSelect').addEventListener('change', () => {
 
 // 手番を次の人に回すボタンの処理
 document.getElementById('nextTurnBtn').addEventListener('click', async () => {
-  console.log('--- 手番変更処理スタート ---');
-  
   const { data, error } = await supabase
     .from('game_state')
     .select('current_turn')
     .eq('id', 'main')
     .single();
 
-  if (error) {
-    console.error('現在の手番の確認に失敗しました:', error);
-    alert('手番の確認に失敗しました。');
-    return;
-  }
+  if (error) return;
 
   const current = data.current_turn;
   let nextTurn = '';
@@ -131,18 +119,44 @@ document.getElementById('nextTurnBtn').addEventListener('click', async () => {
   else if (current === 'user2') nextTurn = 'user3';
   else nextTurn = 'user1';
 
-  console.log(`${current} から ${nextTurn} へ手番を更新します...`);
-
-  const { error: updateError } = await supabase
+  await supabase
     .from('game_state')
     .update({ current_turn: nextTurn })
     .eq('id', 'main');
+});
 
-  if (updateError) {
-    console.error('手番の更新エラー:', updateError);
-    alert('手番の更新に失敗しました。');
+// ★追加：相手に提案するボタンの処理
+document.getElementById('tradeSubmitBtn').addEventListener('click', async () => {
+  const fromUser = document.getElementById('userSelect').value;
+  const itemToTrade = document.getElementById('tradeItemSelect').value;
+  const toUser = document.getElementById('tradeTargetSelect').value;
+
+  // アイテムが選ばれていない場合はストップ
+  if (!itemToTrade) {
+    alert('渡すアイテムを選んでください。');
+    return;
+  }
+
+  // データベースに保存するためのデータを作成
+  const offerData = {
+    from: fromUser,
+    to: toUser,
+    item: itemToTrade
+  };
+
+  // Supabaseの trade_offer 列を更新
+  const { error } = await supabase
+    .from('game_state')
+    .update({ trade_offer: offerData })
+    .eq('id', 'main');
+
+  if (error) {
+    console.error('提案の送信エラー:', error);
+    alert('提案の送信に失敗しました。');
   } else {
-    console.log('手番の更新に成功しました！');
+    alert(`${toUser} に ${itemToTrade} を渡す提案を送信しました！`);
+    // 提案後、間違えて連続で押さないようにボタンを一旦無効化する
+    document.getElementById('tradeSubmitBtn').disabled = true;
   }
 });
 
