@@ -97,7 +97,7 @@ supabase
     { event: '*', schema: 'public', table: 'game_state' },
     (payload) => {
       console.log('手番のデータ変更を検知:', payload);
-      // ※ここに画面の表示を更新する処理を追加します（次のステップで作ります！）
+      fetchAndDisplayTurn(); // ← ★この1行を追加！
     }
   )
   .subscribe();
