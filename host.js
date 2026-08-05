@@ -80,6 +80,26 @@ supabase
   )
   .subscribe();
 
+// 現在の手番を取得して画面に表示する関数
+async function fetchAndDisplayTurn() {
+  const { data, error } = await supabase
+    .from('game_state')
+    .select('current_turn')
+    .eq('id', 'main')
+    .single();
+
+  if (error) {
+    console.error('手番の取得エラー:', error);
+    return;
+  }
+
+  // 画面の文字を書き換える
+  document.getElementById('currentTurnDisplay').textContent = `現在の手番: ${data.current_turn}`;
+}
+
+// 画面を最初に開いたときに実行する
+fetchAndDisplayTurn();
+
 // ==========================================
 // 追加：リアルタイムで game_state（手番）の変更を検知する設定
 // ==========================================
