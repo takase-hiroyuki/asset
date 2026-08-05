@@ -9,44 +9,7 @@
   <!-- アイテムを配るボタン -->
   <button id="distributeBtn">アイテムを配る</button>
 
-  <script type="module">
-    // Supabaseの読み込み
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-
-    const SUPABASE_URL = 'https://dtgfdtsiggljqczvqcgy.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_8NKvxlnYvvD1ImNdYyj6Bg_DofuOnn1';
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    document.getElementById('distributeBtn').addEventListener('click', async () => {
-      const allItems = ['item01', 'item02', 'item03', 'item04', 'item05', 'item06', 'item07', 'item08', 'item09', 'item10'];
-      const players = ['user1', 'user2', 'user3'];
-      
-      // 振り分け用の空の配列を準備
-      const userItems = { user1: [], user2: [], user3: [] };
-
-      // 10個のアイテムを1つずつランダムなプレイヤーに割り当て
-      allItems.forEach(item => {
-        const randomPlayer = players[Math.floor(Math.random() * players.length)];
-        userItems[randomPlayer].push(item);
-      });
-
-      // 振り分けた結果をSupabaseに保存（3人分）
-      for (const player of players) {
-        const { error } = await supabase
-          .from('users')
-          .update({ items: userItems[player] })
-          .eq('id', player);
-
-        if (error) {
-          console.error(`${player}の更新エラー:`, error);
-          alert('エラーが発生しました。コンソールを確認してください。');
-          return;
-        }
-      }
-
-      console.log('振り分け結果:', userItems);
-      alert('アイテムの配布が完了しました！');
-    });
-  </script>
+  <!-- 外部のJSファイルをモジュールとして読み込む -->
+  <script type="module" src="host.js"></script>
 </body>
 </html>
