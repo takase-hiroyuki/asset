@@ -1,1 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二次関数の最大・最小 インタラクティブ演習</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Chosen Palette: Scholarly Cream (目に優しいクリーム色を基調に、知的なネイビーと明快なブルーを配置) -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans JP', sans-serif; background-color: #fdfbf7; color: #1e293b; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 650px;
+            margin: auto;
+            height: 380px;
+            max-height: 400px;
+        }
+        .card { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .input-accent { accent-color: #2563eb; }
+    </style>
+</head>
+<body class="antialiased">
 
+    <!-- Application Structure Plan:
+        1. イントロダクション: 
+           二次関数の動的な性質を説明。MathJaxによる数式表示と、aの変化を可視化する重要性を提示。
+        2. インタラクティブ・シミュレーター:
+           y = (x-2)^2 + 1 において、0 ≦ x ≦ a の範囲をスライダーで変更。
+           最小値(a=2での切り替わり)と最大値(a=4での切り替わり)のロジックをリアルタイムで反映。
+        3. 解説パネル:
+           プリントの問2・問3に対応した「2通りの場合分け」を整理して提示。
+        4. デジタルふり返り:
+           「未来の自分への注意書き」を意識させるまとめセクション。
+    -->
+
+    <!-- Visualization & Content Choices:
+        - グラフ: Chart.jsを使用。基本関数、アクティブな定義域、最大・最小のハイライトを別データセットで管理。
+        - 動的テキスト: スライダーの値に基づき、最小値/最大値が「どの点」にあるかをJSで判定し、MathJaxで再描画。
+        - レイアウト: Tailwindによるレスポンシブグリッド。チャートコンテナはアスペクト比を維持せず高さを固定制御。
+        - NO SVG/Mermaid: グラフ描画はCanvasに限定。
+    -->
+
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-slate-800 flex items-center">
+                <span class="bg-blue-600 text-white w-8 h-8 rounded flex items-center justify-center mr-3 text-sm">数I</span>
+                二次関数の最大・最小：動く定義域
+            </h1>
+            <div class="text-xs font-semibold text-blue-600 border border-blue-200 px-3 py-1 rounded-full bg-blue-50">
+                デジタル演習プリント対応
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-6 py-10 space-y-12">
+
+        <header class="text-center space-y-4">
+            <h2 class="text-3xl font-extrabold text-slate-900">文字 \( a \) の変化をシミュレートする</h2>
+            <p class="text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                定義域の端 \( a \) が動くと、最大値・最小値の場所も変化します。
+                スライダーを動かして、グラフの形状と「場合分けの境界」を視覚的に確認しましょう。
+            </p>
+        </header>
+
+        <!-- Simulator -->
+        <section class="card p-8">
+            <div class="grid lg:grid-cols-5 gap-10">
+                <div class="lg:col-span-2 space-y-8">
+                    <div class="p-6 bg-slate-50 rounded-xl space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-bold text-slate-700">右端 \( a \) の値</span>
+                            <span id="a-label" class="text-2xl font-mono font-bold text-blue-600">1.0</span>
+                        </div>
+                        <input id="a-slider" type="range" min="0.5" max="5.0" step="0.1" value="1.0" class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slate-200 input-accent">
+                        <div class="flex justify-between text-[10px] text-slate-400 font-bold uppercase">
+                            <span>0.5</span>
+                            <span>軸(2.0)</span>
+                            <span>境界(4.0)</span>
+                            <span>5.0</span>
+                        </div>
+                    </div>
+
+                    <div id="logic-display" class="space-y-4">
+                        <div class="p-4 rounded-lg border-l-4 border-blue-500 bg-blue-50">
+                            <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider mb-1">現在の最小値</h4>
+                            <p id="min-status" class="text-sm text-slate-700 font-medium">--</p>
+                        </div>
+                        <div class="p-4 rounded-lg border-l-4 border-amber-500 bg-amber-50">
+                            <h4 class="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1">現在の最大値</h4>
+                            <p id="max-status" class="text-sm text-slate-700 font-medium">--</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-3">
+                    <div class="chart-container">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+                    <p class="mt-4 text-center text-xs text-slate-500">
+                        対象： \( y = (x - 2)^2 + 1 \) （ \( 0 \leqq x \leqq a \) ）
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Case Logic Summary -->
+        <section class="space-y-6">
+            <h3 class="text-2xl font-bold text-slate-800 flex items-center">
+                <span class="mr-3">💡</span>場合分けのポイント
+            </h3>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="card p-6 border-t-4 border-blue-600">
+                    <h4 class="font-bold text-blue-900 mb-3 underline decoration-blue-200">最小値：軸が含まれるか？</h4>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        軸 \( x=2 \) が定義域 \( [0, a] \) の中に入った瞬間に、最小値は「右端」から「頂点」へ移ります。
+                        つまり、 \( a=2 \) が境界線です。
+                    </p>
+                </div>
+                <div class="card p-6 border-t-4 border-amber-600">
+                    <h4 class="font-bold text-amber-900 mb-3 underline decoration-amber-200">最大値：左右どちらが遠いか？</h4>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        左端 \( x=0 \) と右端 \( x=a \) を比較します。軸 \( x=2 \) からの距離が等しくなるのは \( a=4 \) のとき。
+                        それ以降は右端の方が遠くなり、最大値が入れ替わります。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Final Note Section -->
+        <footer class="bg-slate-900 text-white p-10 rounded-3xl shadow-xl overflow-hidden relative">
+            <div class="relative z-10 space-y-6">
+                <div class="space-y-2">
+                    <h3 class="text-2xl font-bold">考査前の自分への注意書き</h3>
+                    <p class="text-slate-400 text-sm">今日学んだ「場合分けのコツ」を言語化して記憶に焼き付けましょう。</p>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="bg-white/10 p-4 rounded-lg border border-white/20">
+                        <p class="text-xs font-bold text-blue-400 mb-2 uppercase">Check 1</p>
+                        <p class="text-sm">最小値は「軸が範囲内か外か」を確認！</p>
+                    </div>
+                    <div class="bg-white/10 p-4 rounded-lg border border-white/20">
+                        <p class="text-xs font-bold text-amber-400 mb-2 uppercase">Check 2</p>
+                        <p class="text-sm">最大値は「軸から遠い方の端点」を確認！</p>
+                    </div>
+                </div>
+
+                <div class="pt-6 border-t border-white/10 flex justify-between items-center">
+                    <p class="text-xs text-slate-500 italic">Writing these 2 lines will save your score.</p>
+                    <button onclick="window.print()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full text-sm font-bold transition-all">
+                        プリント用PDFを生成
+                    </button>
+                </div>
+            </div>
+        </footer>
+
+    </main>
+
+    <script>
+        const f = (x) => Math.pow(x - 2, 2) + 1;
+        const slider = document.getElementById('a-slider');
+        const aLabel = document.getElementById('a-label');
+        const minStatus = document.getElementById('min-status');
+        const maxStatus = document.getElementById('max-status');
+        let chart;
+
+        function initChart() {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            const labels = [];
+            for (let i = -0.5; i <= 5.5; i += 0.1) labels.push(parseFloat(i.toFixed(1)));
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Base',
+                            data: labels.map(x => f(x)),
+                            borderColor: '#e2e8f0',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: false,
+                            order: 10
+                        },
+                        {
+                            label: 'Domain',
+                            data: [],
+                            borderColor: '#1e293b',
+                            borderWidth: 4,
+                            pointRadius: 0,
+                            fill: false,
+                            order: 5
+                        },
+                        {
+                            label: 'Points',
+                            data: [],
+                            backgroundColor: (ctx) => {
+                                return ctx.dataIndex === 0 ? '#ef4444' : '#10b981';
+                            },
+                            pointRadius: 7,
+                            showLine: false,
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 0 },
+                    scales: {
+                        y: { min: 0, max: 12, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } },
+                        x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                    },
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                }
+            });
+            update(1.0);
+        }
+
+        function update(val) {
+            const a = parseFloat(val);
+            aLabel.innerText = a.toFixed(1);
+
+            const labels = chart.data.labels;
+            chart.data.datasets[1].data = labels.map(x => (x >= 0 && x <= a) ? f(x) : null);
+
+            let minX, minY, maxX, maxY;
+
+            // Logic Min
+            if (a < 2) {
+                minX = a; minY = f(a);
+                minStatus.innerHTML = `\( 0 < a < 2 \) : 右端 \( x=a \) で最小`;
+            } else {
+                minX = 2; minY = 1;
+                minStatus.innerHTML = `\( a \geqq 2 \) : 頂点 \( x=2 \) で最小`;
+            }
+
+            // Logic Max
+            if (a < 4) {
+                maxX = 0; maxY = 5;
+                maxStatus.innerHTML = `\( 0 < a < 4 \) : 左端 \( x=0 \) で最大`;
+            } else {
+                maxX = a; maxY = f(a);
+                maxStatus.innerHTML = `\( a \geqq 4 \) : 右端 \( x=a \) で最大`;
+            }
+
+            // Points Dataset Update
+            chart.data.datasets[2].pointBackgroundColor = [];
+            chart.data.datasets[2].data = labels.map(x => {
+                const rx = parseFloat(x);
+                if (Math.abs(rx - parseFloat(minX.toFixed(1))) < 0.05) {
+                    chart.data.datasets[2].pointBackgroundColor.push('#2563eb');
+                    return minY;
+                }
+                if (Math.abs(rx - parseFloat(maxX.toFixed(1))) < 0.05) {
+                    chart.data.datasets[2].pointBackgroundColor.push('#d97706');
+                    return maxY;
+                }
+                return null;
+            });
+
+            chart.update();
+            if (window.MathJax) MathJax.typesetPromise([minStatus, maxStatus]);
+        }
+
+        slider.addEventListener('input', (e) => update(e.target.value));
+        window.onload = initChart;
+    </script>
+</body>
+</html>
